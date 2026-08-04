@@ -57,6 +57,9 @@
   color: #cbd5e1;
   cursor: pointer;
   transition: all 180ms ease;
+  border: 0;
+  background: transparent;
+  text-align: left;
 }
 
 .nav-item:hover,
@@ -79,25 +82,6 @@
   place-items: center;
   background: rgba(255, 255, 255, 0.06);
   font-size: 0.9rem;
-}
-
-.chevron {
-  opacity: 0.7;
-}
-
-.depth-1 {
-  margin-left: 12px;
-}
-
-.depth-2 {
-  margin-left: 24px;
-}
-
-.nav-children {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 4px 0 6px;
 }
 
 .sidebar-card {
@@ -127,7 +111,8 @@
 .sidebar-card p,
 .hero-panel p,
 .stat-foot,
-.insight-item span {
+.insight-item span,
+.ai-response {
   color: #cbd5e1;
   line-height: 1.6;
 }
@@ -290,6 +275,122 @@
 
 .table-wrap {
   overflow-x: auto;
+}
+
+.product-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.7);
+  display: grid;
+  place-items: center;
+  z-index: 60;
+  pointer-events: auto;
+}
+
+.product-modal {
+  position: relative;
+  z-index: 61;
+  width: min(100%, 680px);
+  padding: 24px;
+  border-radius: 24px;
+  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  box-shadow: 0 20px 40px rgba(2, 6, 23, 0.3);
+}
+
+.product-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.product-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #cbd5e1;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(15, 23, 42, 0.95);
+  color: #f8fafc;
+}
+
+.form-error {
+  color: #fb7185;
+  margin: 0;
+}
+
+.product-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.action-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.status-bar {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.82);
+  color: #e2e8f0;
+}
+
+.ai-response {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(34, 211, 238, 0.12);
+}
+
+.analytics-list,
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.analytics-card {
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.14);
 }
 
 table {

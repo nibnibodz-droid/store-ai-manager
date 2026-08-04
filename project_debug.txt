@@ -1,3 +1,70 @@
+========== PROJECT STRUCTURE ==========
+src/main.tsx
+src/services/ordersService.ts
+src/services/supabaseSchema.sql
+src/services/productsService.ts
+src/services/supabase.ts
+src/services/orderItemsService.ts
+src/services/customersService.ts
+src/index.css
+src/App.css
+src/types/supabaseModels.ts
+src/App.tsx
+src/lib/supabase.ts
+src/assets/react.svg
+src/assets/hero.png
+src/assets/vite.svg
+src/ErrorBoundary.tsx
+
+========== PACKAGE.JSON ==========
+{
+  "name": "store-ai-manager",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.111.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.4",
+    "eslint": "^10.8.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "globals": "^17.7.0",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.65.0",
+    "vite": "^8.2.0"
+  }
+}
+
+========== MAIN.TSX ==========
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './index.css'
+import App from './App'
+import { ErrorBoundary } from './ErrorBoundary'
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  </StrictMode>,
+)
+
+========== APP.TSX ==========
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 import { createOrder, getOrders } from './services/ordersService'
@@ -189,16 +256,7 @@ function App() {
 
   const topProducts = useMemo(() => [...products].sort((left, right) => right.stock - left.stock).slice(0, 3), [products])
 
-  const handleSelectView = (view: ViewKey) => {
-    setActiveView(view)
-    setError(null)
-  }
-
-  const closeProductModal = () => {
-    setIsProductModalOpen(false)
-    setEditingProductId(null)
-    setProductForm(emptyProductForm)
-  }
+  const handleSelectView = (view: ViewKey) => setActiveView(view)
 
   const handleOpenProductModal = () => {
     setEditingProductId(null)
@@ -533,11 +591,11 @@ function App() {
       </section>
 
       {isProductModalOpen ? (
-        <div className="product-modal-backdrop" onClick={closeProductModal}>
+        <div className="product-modal-backdrop" onClick={() => setIsProductModalOpen(false)}>
           <div className="product-modal" onClick={(event) => event.stopPropagation()}>
             <div className="product-modal-header">
               <h3>{editingProductId ? 'Edit product' : 'Create product'}</h3>
-              <button type="button" className="ghost-btn small" onClick={closeProductModal}>
+              <button type="button" className="ghost-btn small" onClick={() => setIsProductModalOpen(false)}>
                 Close
               </button>
             </div>
@@ -570,7 +628,7 @@ function App() {
                 <button type="submit" className="ghost-btn">
                   Save product
                 </button>
-                <button type="button" className="ghost-btn" onClick={closeProductModal}>
+                <button type="button" className="ghost-btn" onClick={() => setIsProductModalOpen(false)}>
                   Cancel
                 </button>
               </div>
@@ -857,7 +915,7 @@ function App() {
           <p className="card-label">AI Assistant</p>
           <h3>Live insights enabled</h3>
           <p>Automations are monitoring stock, demand, and customer trends.</p>
-          <button type="button" className="ghost-btn" onClick={() => handleSelectView('ai')}>
+          <button type="button" className="ghost-btn" onClick={() => setActiveView('ai')}>
             Open Copilot
           </button>
         </div>
@@ -870,7 +928,7 @@ function App() {
             <h1>Store AI Manager</h1>
           </div>
           <div className="topbar-actions">
-            <button type="button" className="ghost-btn" onClick={() => handleSelectView('analytics')}>
+            <button type="button" className="ghost-btn" onClick={() => setActiveView('analytics')}>
               + New report
             </button>
             <div className="profile-pill">
@@ -899,3 +957,272 @@ function App() {
 }
 
 export default App
+
+========== VITE CONFIG ==========
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [react()],
+})
+
+========== SUPABASE ==========
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+export const supabase = createClient(
+  supabaseUrl,
+  supabaseAnonKey
+)
+
+
+========== SERVICES ==========
+
+----- src/services/ordersService.ts -----
+import { supabase } from '../lib/supabase'
+import type { Order } from '../types/supabaseModels'
+
+type OrderPayload = {
+  customer_id: string
+  status: string
+  amount: number
+}
+
+function normalizeOrderAmount(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed)) {
+      return parsed
+    }
+  }
+
+  return 0
+}
+
+export async function getOrders(): Promise<Order[]> {
+  const { data, error } = await supabase
+    .from('orders')
+    .select('id, customer_id, status, amount, total, created_at')
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    throw error
+  }
+
+  return ((data ?? []) as Array<Order & { total?: number | null }>).map((order) => ({
+    ...order,
+    amount: normalizeOrderAmount(order.total ?? order.amount),
+  })) as Order[]
+}
+
+export async function createOrder(payload: OrderPayload): Promise<Order> {
+  const { data, error } = await supabase
+    .from('orders')
+    .insert(payload)
+    .select('id, customer_id, status, amount, created_at')
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  return data as Order
+}
+
+----- src/services/supabaseSchema.sql -----
+create table if not exists products (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  sku text not null unique,
+  price numeric not null default 0,
+  stock integer not null default 0,
+  category text not null default 'General',
+  created_at timestamptz default now()
+);
+
+create table if not exists customers (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  email text not null unique,
+  created_at timestamptz default now()
+);
+
+create table if not exists orders (
+  id uuid primary key default gen_random_uuid(),
+  customer_id uuid not null references customers(id) on delete restrict,
+  product_id uuid not null references products(id) on delete restrict,
+  amount numeric not null default 0,
+  status text not null default 'pending',
+  created_at timestamptz default now()
+);
+
+----- src/services/productsService.ts -----
+import { supabase } from '../lib/supabase'
+import type { Product } from '../types/supabaseModels'
+
+type ProductPayload = {
+  title: string
+  description: string
+  price: number
+  stock: number
+  category: string
+}
+
+export async function getProducts(): Promise<Product[]> {
+  const { data, error } = await supabase
+    .from('products')
+    .select('id,title,description,price,stock,category')
+    .order('title', { ascending: true })
+
+  if (error) {
+    throw error
+  }
+
+  return (data ?? []) as Product[]
+}
+
+export async function createProduct(payload: ProductPayload): Promise<Product> {
+  const { data, error } = await supabase
+    .from('products')
+    .insert(payload)
+    .select('id,title,description,price,stock,category')
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  return data as Product
+}
+
+export async function updateProduct(id: string, payload: ProductPayload): Promise<Product> {
+  const { data, error } = await supabase
+    .from('products')
+    .update(payload)
+    .eq('id', id)
+    .select('id,title,description,price,stock,category')
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  return data as Product
+}
+
+export async function deleteProduct(id: string): Promise<void> {
+  const { error } = await supabase.from('products').delete().eq('id', id)
+
+  if (error) {
+    throw error
+  }
+}
+
+export async function updateProductStock(id: string, stock: number): Promise<Product> {
+  const { data, error } = await supabase
+    .from('products')
+    .update({ stock })
+    .eq('id', id)
+    .select('id,title,description,price,stock,category')
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  return data as Product
+}
+
+----- src/services/supabase.ts -----
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+export const supabase = createClient(
+  supabaseUrl,
+  supabaseAnonKey
+)
+
+
+----- src/services/orderItemsService.ts -----
+import { supabase } from '../lib/supabase'
+import type { OrderItem } from '../types/supabaseModels'
+
+type OrderItemPayload = {
+  order_id: string
+  product_id: string
+  quantity: number
+  price: number
+}
+
+export async function createOrderItem(payload: OrderItemPayload): Promise<OrderItem> {
+  const { data, error } = await supabase
+    .from('order_items')
+    .insert(payload)
+    .select('id, order_id, product_id, quantity, price, created_at')
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  return data as OrderItem
+}
+
+----- src/services/customersService.ts -----
+import { supabase } from '../lib/supabase'
+import type { Customer } from '../types/supabaseModels'
+
+export async function getCustomers(): Promise<Customer[]> {
+  const { data, error } = await supabase.from('customers').select('*').order('created_at', { ascending: false })
+
+  if (error) {
+    throw error
+  }
+
+  return (data ?? []) as Customer[]
+}
+
+========== BUILD ==========
+
+> store-ai-manager@0.0.0 build
+> tsc -b && vite build
+
+vite v8.2.0 building client environment for production...
+[2Ktransforming...✓ 65 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.46 kB │ gzip:   0.30 kB
+dist/assets/index-CIaSAwTV.css    6.13 kB │ gzip:   1.76 kB
+dist/assets/index-D1PaxWBo.js   422.86 kB │ gzip: 118.82 kB
+
+✓ built in 241ms
+
+========== NPM LIST ==========
+store-ai-manager@0.0.0 /workspaces/store-ai-manager
+├── @eslint/js@10.0.1
+├── @supabase/supabase-js@2.111.0
+├── @types/node@24.13.3
+├── @types/react-dom@19.2.4
+├── @types/react@19.2.18
+├── @vitejs/plugin-react@6.0.5
+├── eslint-plugin-react-hooks@7.1.1
+├── eslint-plugin-react-refresh@0.5.3
+├── eslint@10.8.0
+├── globals@17.8.0
+├── playwright-core@1.62.1 extraneous
+├── playwright@1.62.1 extraneous
+├── react-dom@19.2.8
+├── react@19.2.8
+├── typescript-eslint@8.65.0
+├── typescript@6.0.3
+└── vite@8.2.0
+
