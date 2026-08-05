@@ -1,8 +1,9 @@
-import { supabase } from '../lib/supabase'
+import { supabase } from './supabase'
 import type { Order } from '../types/supabaseModels'
 
 type OrderPayload = {
   customer_id: string
+  product_id: string
   status: string
   amount: number
 }
@@ -25,24 +26,24 @@ function normalizeOrderAmount(value: unknown): number {
 export async function getOrders(): Promise<Order[]> {
   const { data, error } = await supabase
     .from('orders')
-    .select('id, customer_id, status, amount, total, created_at')
+    .select('id, customer_id, product_id, status, amount, created_at')
     .order('created_at', { ascending: false })
 
   if (error) {
     throw error
   }
 
-  return ((data ?? []) as Array<Order & { total?: number | null }>).map((order) => ({
+  return ((data ?? []) as Array<Order>).map((order) => ({
     ...order,
-    amount: normalizeOrderAmount(order.total ?? order.amount),
-  })) as Order[]
+    amount: normalizeOrderAmount(order.amount),
+  }))
 }
 
 export async function createOrder(payload: OrderPayload): Promise<Order> {
   const { data, error } = await supabase
     .from('orders')
     .insert(payload)
-    .select('id, customer_id, status, amount, created_at')
+    .select('id, customer_id, product_id, status, amount, created_at')
     .single()
 
   if (error) {

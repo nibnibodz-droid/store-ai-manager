@@ -18,6 +18,7 @@ type ProductFormState = {
 
 type OrderFormState = {
   customer_id: string
+  product_id: string
   status: string
   amount: string
 }
@@ -57,9 +58,9 @@ const initialProducts: Product[] = [
 ]
 
 const initialOrders: Order[] = [
-  { id: 'order-1', customer_id: 'customer-1', status: 'Delivered', amount: 240, created_at: '2026-08-02T14:22:00.000Z' },
-  { id: 'order-2', customer_id: 'customer-2', status: 'Packed', amount: 180, created_at: '2026-08-03T10:10:00.000Z' },
-  { id: 'order-3', customer_id: 'customer-3', status: 'Processing', amount: 320, created_at: '2026-08-03T12:05:00.000Z' },
+  { id: 'order-1', customer_id: 'customer-1', product_id: 'product-1', status: 'Delivered', amount: 240, created_at: '2026-08-02T14:22:00.000Z' },
+  { id: 'order-2', customer_id: 'customer-2', product_id: 'product-1', status: 'Packed', amount: 180, created_at: '2026-08-03T10:10:00.000Z' },
+  { id: 'order-3', customer_id: 'customer-3', product_id: 'product-1', status: 'Processing', amount: 320, created_at: '2026-08-03T12:05:00.000Z' },
 ]
 
 const initialCustomers: Customer[] = [
@@ -78,6 +79,7 @@ const emptyProductForm: ProductFormState = {
 
 const emptyOrderForm: OrderFormState = {
   customer_id: '',
+  product_id: '',
   status: 'Pending',
   amount: '',
 }
@@ -138,7 +140,10 @@ function App() {
           return
         }
 
-        setProducts(productData.length ? productData : initialProducts)
+        const safeProducts = (productData ?? []).filter(
+          (product) => product && product.id && product.title
+        )
+        setProducts(safeProducts.length ? safeProducts : initialProducts)
         setOrders(orderData.length ? orderData : initialOrders)
         setCustomers(customerData.length ? customerData : initialCustomers)
         setStatusMessage('Live data loaded successfully.')
@@ -171,8 +176,9 @@ function App() {
     const totalSales = orders.reduce((sum, order) => sum + getOrderAmount(order), 0)
     const totalProducts = products.length
     const totalCustomers = customers.length
-    const lowStockCount = products.filter((product) => product.stock < 10).length
-
+const lowStockCount = products.filter(
+  (product) => product && (product.stock ?? 0) < 10
+).length
     return {
       totalSales,
       orders: orders.length,
@@ -240,15 +246,15 @@ function App() {
     }
 
     try {
-      const savedProduct = editingProductId
+      editingProductId
         ? await updateProduct(editingProductId, payload)
         : await createProduct(payload)
 
-      setProducts((current) =>
-        editingProductId
-          ? current.map((product) => (product.id === editingProductId ? savedProduct : product))
-          : [savedProduct, ...current],
+      const refreshedProducts = await getProducts()
+      const safeProducts = (refreshedProducts ?? []).filter(
+        (product) => product && product.id && product.title
       )
+      setProducts(safeProducts.length ? safeProducts : initialProducts)
       setProductForm(emptyProductForm)
       setEditingProductId(null)
       setIsProductModalOpen(false)
@@ -275,16 +281,24 @@ function App() {
       setProducts((current) => current.filter((product) => product.id !== id))
       setStatusMessage('Product removed.')
     } catch (err) {
-      setProducts((current) => current.filter((product) => product.id !== id))
-      setStatusMessage('Product removed from the local view.')
-      setError(err instanceof Error ? err.message : 'Unable to remove product right now.')
+      setStatusMessage('Delete failed.')
+      console.log('DELETE ERROR:', JSON.stringify(err, null, 2))
+      setError(
+        err && typeof err === 'object' && 'message' in err
+          ? String(err.message).includes('order_items_product_id_fkey')
+            ? 'Cannot delete this product because it is linked to existing orders.'
+            : String(err.message)
+          : JSON.stringify(err)
+      )
     }
   }
 
   const handleOrderSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    if (!orderForm.customer_id || !orderForm.amount) {
+    console.log('ORDER FORM:', orderForm)
+
+    if (!orderForm.customer_id || !orderForm.product_id || !orderForm.amount) {
       setError('Select a customer and enter an order amount.')
       return
     }
@@ -292,6 +306,7 @@ function App() {
     try {
       const createdOrder = await createOrder({
         customer_id: orderForm.customer_id,
+        product_id: orderForm.product_id,
         status: orderForm.status,
         amount: Number(orderForm.amount),
       })
@@ -303,6 +318,7 @@ function App() {
       const fallbackOrder: Order = {
         id: `local-order-${Date.now()}`,
         customer_id: orderForm.customer_id,
+        product_id: orderForm.product_id,
         status: orderForm.status,
         amount: Number(orderForm.amount),
         created_at: new Date().toISOString(),
@@ -514,7 +530,9 @@ function App() {
               </tr>
             </thead>
             <tbody>
-              {products.map((product) => (
+              {products
+  .filter((product) => product && product.id)
+  .map((product) => (
                 <tr key={product.id}>
                   <td>{product.title}</td>
                   <td>{product.category}</td>

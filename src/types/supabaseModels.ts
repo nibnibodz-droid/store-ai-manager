@@ -11,6 +11,7 @@ export type Product = {
 export type Order = {
   id: string
   customer_id: string
+  product_id: string
   status: string
   amount: number | null
   total?: number | null
