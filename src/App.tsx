@@ -187,7 +187,12 @@ function App() {
     [customers],
   )
 
-  const topProducts = useMemo(() => [...products].sort((left, right) => right.stock - left.stock).slice(0, 3), [products])
+  const topProducts = useMemo(() => {
+  return products
+    .filter((product) => product != null)
+    .sort((a, b) => (b.stock ?? 0) - (a.stock ?? 0))
+    .slice(0, 3)
+}, [products])
 
   const handleSelectView = (view: ViewKey) => {
     setActiveView(view)
